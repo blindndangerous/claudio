@@ -1,6 +1,7 @@
 package integration
 
 import (
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -17,12 +18,26 @@ func isolateIntegrationXDG(t *testing.T) string {
 func TestIntegrationEnvironmentUsesTemporaryXDG(t *testing.T) {
 	root := isolateIntegrationXDG(t)
 
+	cacheRoot, err := os.UserCacheDir()
+	if err != nil {
+		t.Fatalf("UserCacheDir: %v", err)
+	}
+	if !integrationPathWithin(root, cacheRoot) {
+		t.Fatalf("user cache directory %q is outside temporary root %q", cacheRoot, root)
+	}
+
 	databasePath, err := tracking.GetDatabasePath()
 	if err != nil {
 		t.Fatalf("GetDatabasePath: %v", err)
 	}
-	wantPrefix := filepath.Join(root, ".cache") + string(filepath.Separator)
-	if !strings.HasPrefix(databasePath, wantPrefix) {
-		t.Fatalf("tracking database path %q is outside isolated cache %q", databasePath, wantPrefix)
+	if !integrationPathWithin(cacheRoot, databasePath) {
+		t.Fatalf("tracking database path %q is outside isolated cache %q", databasePath, cacheRoot)
 	}
+}
+
+func integrationPathWithin(root, path string) bool {
+	relative, err := filepath.Rel(root, path)
+	return err == nil && relative != ".." &&
+		!strings.HasPrefix(relative, ".."+string(filepath.Separator)) &&
+		!filepath.IsAbs(relative)
 }

@@ -1,6 +1,6 @@
 # Repository audit and repairs, September 12, 2026
 
-The actionable audit findings have been repaired. Fresh Windows checks pass, including the full test suite with and without CGO, race detection, vet, lint, and module verification. PR CI will supply Linux, macOS, and Jekyll build results. The numbered findings below describe the audited baseline.
+The actionable audit findings have been repaired. Fresh Windows checks pass, including the full test suite with and without CGO, race detection, vet, lint, and module verification. The first PR CI run passed Linux and Windows tests, all coverage gates, lint, the non-CGO build, and the Jekyll build. It also exposed two macOS cache-isolation test defects, repaired in a follow-up commit. See [PR #34](https://github.com/ctoth/claudio/pull/34) for checks on the latest revision. The numbered findings below describe the audited baseline.
 
 The checkout was fast-forwarded from `1b57c92` to `fdd35ca4c5d13e4980202cae30d6ac3bfd3cb3e9` before the audit. The baseline had 329 tracked files, including 183 Go files, 100 Go test files, 15 Markdown documents, 107 MP3s, and five WAVs. The Go tests define 697 top-level tests. The complete tracked-file list is in [inventory.txt](inventory.txt).
 
@@ -93,6 +93,8 @@ These concerns began as source review findings. Follow-up work established the f
 - The developer hook logger now uses the user's cache directory, a private directory, exclusive unique files, sanitized event names, and bounded JSON reads. Invalid input is neither saved nor echoed. Valid payloads remain intentionally available for debugging, with an explicit sensitive-data warning. Windows tests verify isolation, naming, uniqueness, and pipe behavior; Unix permission assertions require Unix CI. The initial testable entry-point test failed to compile before implementation, so no prior behavioral failure is claimed for that test.
 
 ## Repair verification
+
+The first PR CI run caught two macOS-specific test defects introduced during repair. The integration assertion assumed an XDG cache path, although macOS uses `HOME/Library/Caches`; its database was already isolated. The developer logger helper set XDG and Windows cache variables but omitted `HOME`, so its macOS writes could reach the runner's real cache. Both helpers now check the platform cache path within their temporary root, and the logger isolates `HOME` and `USERPROFILE` before running. This also makes the invalid-payload test inspect the correct directory on macOS.
 
 Fresh checks on Windows amd64 with Go 1.26.6 passed:
 

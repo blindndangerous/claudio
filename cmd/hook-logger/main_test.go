@@ -102,9 +102,26 @@ func TestRunDoesNotEchoOrSaveInvalidPayload(t *testing.T) {
 func isolateUserCache(t *testing.T) string {
 	t.Helper()
 	root := t.TempDir()
+	t.Setenv("HOME", root)
+	t.Setenv("USERPROFILE", root)
 	t.Setenv("LOCALAPPDATA", root)
 	t.Setenv("XDG_CACHE_HOME", root)
-	return root
+
+	cacheRoot, err := os.UserCacheDir()
+	if err != nil {
+		t.Fatalf("resolve user cache directory: %v", err)
+	}
+	if !pathWithin(root, cacheRoot) {
+		t.Fatalf("user cache directory %q is outside temporary root %q", cacheRoot, root)
+	}
+	return cacheRoot
+}
+
+func pathWithin(root, path string) bool {
+	relative, err := filepath.Rel(root, path)
+	return err == nil && relative != ".." &&
+		!strings.HasPrefix(relative, ".."+string(filepath.Separator)) &&
+		!filepath.IsAbs(relative)
 }
 
 func assertPermissions(t *testing.T, path string, want os.FileMode) {
